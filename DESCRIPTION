@@ -1,13 +1,15 @@
 Package: tidy-text-mining
-Title: Tidy Text Mining with R
+Title: Text Mining with R: A Tidy Approach
 Version: 0.0.0.9000
 Authors@R: c(person("David", "Robinson", email = "admiral.david@gmail.com", role = c("aut", "cre")),
              person("Julia", "Silge", email = "julia.silge@gmail.com", role = c("aut")))
 Depends: R (>= 3.3.0)
 Imports:
   bookdown,
+  janeaustenr,
   dplyr,
   tidyr,
+  ggplot2,
   reshape2,
   gutenbergr,
   jsonlite,
@@ -20,11 +22,10 @@ Imports:
   XML,
   wordcloud,
   lubridate,
-  stringr
+  stringr,
+  ggforce,
+  mallet
 Remotes:
-  juliasilge/janeaustenr,
   juliasilge/tidytext,
-  hadley/ggplot2,
   dgrtwo/widyr,
-  thomasp85/ggforce,
   thomasp85/ggraph

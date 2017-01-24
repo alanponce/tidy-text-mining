@@ -38,21 +38,22 @@ text_df <- data_frame(line = 1:4, text = text)
 text_df
 ```
 
-Notice that this data frame isn't yet compatible with tidy tools. We can't filter out words or count which occur most frequently, since each row is made up of multiple combined tokens. We need to turn this into **one-token-per-document-per-row**.
+Notice that this data frame isn't yet compatible with tidy tools. We can't filter out words or count which occur most frequently, since each row is made up of multiple combined words. We need to convert this so that it has **one-token-per-document-per-row**. A token, in this context, is a meaningful unit of text that we are interested in using for further analysis. Tokenization is the process of breaking up text into individual tokens, and it is most commonly done at the level of single words. Within our tidy text framework, we will both break the text into individual tokens *and* transform it to a tidy data structure.
 
-To do this, we use tidytext's `unnest_tokens` function.
+To do this, we use tidytext's `unnest_tokens()` function.
 
 ```{r dependson = "text_df", R.options = list(dplyr.print_max = 10)}
 library(tidytext)
+
 text_df %>%
   unnest_tokens(word, text)
 ```
 
-We've now split each row so that there's one token (word) in each row of the new data frame. Also notice:
+We've now split each row so that there is one token (word) in each row of the new data frame; the default tokenization in `unnest_tokens()` is for single words, as shown here. Also notice:
 
 * Other columns, such as the line number each word came from, are retained.
 * Punctuation has been stripped.
-* By default, `unnest_tokens` converts the tokens to lowercase, which makes them easier to compare or combine with other datasets. (Use the `to_lower = FALSE` argument to turn off this behavior).
+* By default, `unnest_tokens()` converts the tokens to lowercase, which makes them easier to compare or combine with other datasets. (Use the `to_lower = FALSE` argument to turn off this behavior).
 
 Having the text data in this format lets us manipulate, process, and visualize the text using the standard set of tidy tools, namely dplyr, tidyr, ggplot2, and broom.
 
@@ -75,7 +76,7 @@ original_books <- austen_books() %>%
 original_books
 ```
 
-To work with this as a tidy dataset, we need to restructure it as **one-token-per-row** format. The `unnest_tokens` function is a way to convert a dataframe with a text column to be one-token-per-row.
+To work with this as a tidy dataset, we need to restructure it in the **one-token-per-row** format. The `unnest_tokens()` function is a way to convert a data frame with a text column to be one-token-per-row.
 
 ```{r tidy_books_raw, dependson = "original_books"}
 library(tidytext)
@@ -85,9 +86,9 @@ tidy_books <- original_books %>%
 tidy_books
 ```
 
-This function uses the [tokenizers package](https://github.com/lmullen/tokenizers) [@R-tokenizers] to separate each line into words. The default tokenizing is for words, but other options include characters, n-grams, sentences, lines, paragraphs, or separation around a regex pattern.
+This function uses the [tokenizers](https://github.com/ropensci/tokenizers) package [@R-tokenizers] to separate each line of text in the original data frame into tokens. The default tokenizing is for words, but other options include characters, n-grams, sentences, lines, paragraphs, or separation around a regex pattern.
 
-Now that the data is in one-word-per-row format, we can manipulate it with tidy tools like dplyr. We can remove stop words (kept in the tidytext dataset `stop_words`) with an `anti_join`.
+Now that the data is in one-word-per-row format, we can manipulate it with tidy tools like dplyr. We can remove stop words (kept in the tidytext dataset `stop_words`) with an `anti_join()`.
 
 ```{r tidy_books, dependson = "tidy_books_raw"}
 data(stop_words)
@@ -96,7 +97,7 @@ tidy_books <- tidy_books %>%
   anti_join(stop_words)
 ```
 
-We can also use `count` to find the most common words in all the books as a whole.
+We can also use `count()` to find the most common words in all the books as a whole.
 
 ```{r dependson = "tidy_books"}
 tidy_books %>%
@@ -105,7 +106,7 @@ tidy_books %>%
 
 For example, this allows us to visualize the commonly used words using ggplot2.
 
-```{r plot_count, dependson = "tidy_books", fig.width=6, fig.height=5}
+```{r plotcount, dependson = "tidy_books", fig.width=6, fig.height=5, fig.cap="The most common words in Jane Austen's novels"}
 library(ggplot2)
 
 tidy_books %>%
@@ -130,6 +131,7 @@ A common task in text mining is to look at word frequencies, just like we have d
 
 ```{r eval = FALSE}
 library(gutenbergr)
+
 hgwells <- gutenberg_download(c(35, 36, 5230, 159))
 ```
 
@@ -181,24 +183,28 @@ Now, let's calculate the frequency for each word for the works of Jane Austen, t
 tidy_both <- bind_rows(
   mutate(tidy_bronte, author = "Brontë Sisters"),
   mutate(tidy_hgwells, author = "H.G. Wells"))
+
+austen_percent <- tidy_books %>%
+  mutate(word = str_extract(word, "[a-z]+")) %>%
+  count(word) %>%
+  transmute(word, austen = n / sum(n))
+
 frequency <- tidy_both %>%
   mutate(word = str_extract(word, "[a-z]+")) %>%
   count(author, word) %>%
-  rename(other = n) %>%
-  inner_join(count(tidy_books, word)) %>%
-  rename(Austen = n) %>%
-  mutate(other = other / sum(other),
-         Austen = Austen / sum(Austen)) %>%
+  mutate(other = n / sum(n)) %>%
+  left_join(austen_percent) %>%
   ungroup()
 ```
 
-We use `str_extract` here because the UTF-8 encoded texts from Project Gutenberg have some examples of words with underscores around them to indicate emphasis (like italics). The tokenizer treated these as words but we don't want to count "\_any\_" separately from "any". Now let's plot.
+We use `str_extract()` here because the UTF-8 encoded texts from Project Gutenberg have some examples of words with underscores around them to indicate emphasis (like italics). The tokenizer treated these as words but we don't want to count "\_any\_" separately from "any". Now let's plot.
 
-```{r plot_compare, dependson = "frequency", fig.width=10, fig.height=5.5}
+```{r plotcompare, dependson = "frequency", fig.width=10, fig.height=5.5, fig.cap="Comparing the word frequencies of Jane Austen, the Brontë sisters, and H.G. Wells"}
 library(scales)
-ggplot(frequency, aes(x = other, y = Austen, color = abs(Austen - other))) +
+
+ggplot(frequency, aes(x = other, y = austen, color = abs(austen - other))) +
   geom_abline(color = "gray40", lty = 2) +
-  geom_jitter(alpha = 0.1, size = 2.5, width = 0.4, height = 0.4) +
+  geom_jitter(alpha = 0.1, size = 2.5, width = 0.3, height = 0.3) +
   geom_text(aes(label = word), check_overlap = TRUE, vjust = 1.5) +
   scale_x_log10(labels = percent_format()) +
   scale_y_log10(labels = percent_format()) +
@@ -208,17 +214,17 @@ ggplot(frequency, aes(x = other, y = Austen, color = abs(Austen - other))) +
   labs(y = "Jane Austen", x = NULL)
 ```
 
-Words that are close to the line in these plots have similar frequencies in both sets of texts, for example, in both Austen and Brontë texts ("miss", "time", "lady", "day" at the upper frequency end) or in both Austen and Wells texts ("time", "day", "mind", "brother" at the high frequency end). Words that are far from the line are words that are found more in one set of texts than another. For example, in the Austen-Brontë plot, words like "elizabeth", "emma", "captain", and "bath" (all proper nouns) are found in Austen's texts but not much in the Brontë texts, while words like "arthur", "dark", "dog", and "doctor" are found in the Brontë texts but not the Austen texts. In comparing H.G. Wells with Jane Austen, Wells uses words like "beast", "guns", "brute", and "animal" that Austen does not, while Austen uses words like "family", "friend", "letter", and "agreeable" that Wells does not.
+Words that are close to the line in these plots have similar frequencies in both sets of texts, for example, in both Austen and Brontë texts ("miss", "time", "day" at the upper frequency end) or in both Austen and Wells texts ("time", "day", "brother" at the high frequency end). Words that are far from the line are words that are found more in one set of texts than another. For example, in the Austen-Brontë panel, words like "elizabeth", "emma", and "edmund" (all proper nouns) are found in Austen's texts but not much in the Brontë texts, while words like "arthur", "dog", and "ham" are found in the Brontë texts but not the Austen texts. In comparing H.G. Wells with Jane Austen, Wells uses words like "beast", "island", "feet", and "black" that Austen does not, while Austen uses words like "family", "friend", "letter", and "dear" that Wells does not.
 
-Overall, notice that the words in the Austen-Brontë plot are closer to the zero-slope line than in the Austen-Wells plot and also extend to lower frequencies; Austen and the Brontë sisters use more similar words than Austen and H.G. Wells. Also, we might notice the percent frequencies for individual words are different in one plot when compared to another because of the inner join; not all the words are found in all three sets of texts so the percent frequency is a different quantity.
+Overall, notice in Figure \@ref(fig:plotcompare) that the words in the Austen-Brontë panel are closer to the zero-slope line than in the Austen-Wells panel and also extend to lower frequencies; Austen and the Brontë sisters use more similar words than Austen and H.G. Wells. Also, we  notice that not all the words are found in all three sets of texts and there are fewer points in the plot for Austen and H.G. Wells.
 
 Let's quantify how similar and different these sets of word frequencies are using a correlation test. How correlated are the word frequencies between Austen and the Brontë sisters, and between Austen and Wells?
 
 ```{r cor_test, dependson = "frequency"}
 cor.test(data = frequency[frequency$author == "Brontë Sisters",],
-         ~ other + Austen)
+         ~ other + austen)
 cor.test(data = frequency[frequency$author == "H.G. Wells",], 
-         ~ other + Austen)
+         ~ other + austen)
 ```
 
 The relationship between the word frequencies is different between these sets of texts, as it appears in the plots.
