@@ -8,11 +8,11 @@ library(ggplot2)
 theme_set(theme_light())
 ```
 
-One type of text that gets plenty of attention is text shared online via Twitter. In fact, several of the sentiment lexicons used in this book (and commonly used in general) were designed for use with and validated on tweets. Both of the authors of this book are on Twitter and are fairly regular users of it so in this case study, let's compare the entire Twitter archives of [Julia](https://twitter.com/juliasilge) and [David](https://twitter.com/drob).
+One type of text that gets plenty of attention is text shared online via Twitter. In fact, several of the sentiment lexicons used in this book (and commonly used in general) were designed for use with and validated on tweets. Both of the authors of this book are on Twitter and are fairly regular users of it, so in this case study, let's compare the entire Twitter archives of [Julia](https://twitter.com/juliasilge) and [David](https://twitter.com/drob).
 
 ## Getting the data and distribution of tweets
 
-An individual can download their own Twitter archive by following [directions available on Twitter's website](https://support.twitter.com/articles/20170160). We each downloaded ours and will now open them up. Let's use the lubridate package to convert the string timestamps to date-time objects and initially take a look at our tweeting patterns overall.
+An individual can download their own Twitter archive by following [directions available on Twitter's website](https://support.twitter.com/articles/20170160). We each downloaded ours and will now open them up. Let's use the lubridate package to convert the string timestamps to date-time objects and initially take a look at our tweeting patterns overall (Figure \@ref(fig:setup)).
 
 ```{r setup, fig.width=8, fig.height=6, fig.cap="All tweets from our accounts"}
 library(lubridate)
@@ -136,7 +136,7 @@ word_ratios %>%
 
 We are about equally likely to tweet about maps, email, APIs, and functions.
 
-Which words are most likely to be from Julia's account or from David's account? Let's just take the top 15 most distinctive words for each account and plot them.
+Which words are most likely to be from Julia's account or from David's account? Let's just take the top 15 most distinctive words for each account and plot them in Figure \@ref(fig:plotratios).
 
 ```{r plotratios, dependson = "word_ratios", fig.width=7, fig.height=6, fig.cap="Comparing the odds ratios of words from our accounts"}
 word_ratios %>%
@@ -145,7 +145,7 @@ word_ratios %>%
   ungroup() %>%
   mutate(word = reorder(word, logratio)) %>%
   ggplot(aes(word, logratio, fill = logratio < 0)) +
-  geom_bar(alpha = 0.8, stat = "identity") +
+  geom_bar(stat = "identity") +
   coord_flip() +
   ylab("log odds ratio (David/Julia)") +
   scale_fill_discrete(name = "", labels = c("David", "Julia"))
@@ -226,20 +226,23 @@ words_by_time %>%
   inner_join(top_slopes, by = c("word", "person")) %>%
   filter(person == "David") %>%
   ggplot(aes(time_floor, count/time_total, color = word)) +
-  geom_line(alpha = 0.8, size = 1.3) +
+  geom_line(size = 1.3) +
   labs(x = NULL, y = "Word frequency")
 ```
 
-David tweeted a lot about the UseR conference while he was there and then quickly stopped. He has tweeted more about Stack Overflow toward the end of the year and [less about ggplot2](https://twitter.com/drob/status/712639593703542785) as the year has progressed.
+We see in Figure \@ref(fig:topdave) that David tweeted a lot about the UseR conference while he was there and then quickly stopped. He has tweeted more about Stack Overflow toward the end of the year and less about ggplot2 as the year has progressed.
 
-Now let's plot words that have changed frequency in Julia's tweets.
+<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr">Me: I&#39;m so sick of data science wars. <a href="https://twitter.com/hashtag/rstats?src=hash">#rstats</a> vs Python, frequentist vs Bayesian...<br><br>Them: base vs ggplot2...<br><br>Me: WHY WHICH SIDE ARE YOU ON</p>&mdash; David Robinson (@drob) <a href="https://twitter.com/drob/status/712639593703542785">March 23, 2016</a></blockquote>
+<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+Now let's plot words that have changed frequency in Julia's tweets in Figure \@ref(fig:topjulia).
 
 ```{r topjulia, dependson = "top_slopes2", fig.width=8, fig.height=5, fig.cap="Trending words in Julia's tweets"}
 words_by_time %>%
   inner_join(top_slopes, by = c("word", "person")) %>%
   filter(person == "Julia") %>%
   ggplot(aes(time_floor, count/time_total, color = word)) +
-  geom_line(alpha = 0.8, size = 1.3) +
+  geom_line(size = 1.3) +
   labs(x = NULL, y = "Word frequency")
 ```
 
@@ -300,7 +303,7 @@ word_by_rts %>%
   arrange(desc(retweets))
 ```
 
-At the top of this sorted data frame, we see tweets from Julia and David about packages that they work on, like [gutenbergr](https://cran.r-project.org/package=gutenbergr), [gganimate](https://github.com/dgrtwo/gganimate), and [tidytext](https://cran.r-project.org/package=tidytext). Let's plot the words that have the highest median retweets for each of our accounts.
+At the top of this sorted data frame, we see tweets from Julia and David about packages that they work on, like [gutenbergr](https://cran.r-project.org/package=gutenbergr), [gganimate](https://github.com/dgrtwo/gganimate), and [tidytext](https://cran.r-project.org/package=tidytext). Let's plot the words that have the highest median retweets for each of our accounts (Figure \@ref(fig:plotrts)).
 
 ```{r plotrts, dependson = "word_by_rts", fig.width=10, fig.height=5, fig.cap="Words with highest median retweets"}
 word_by_rts %>%
@@ -311,7 +314,7 @@ word_by_rts %>%
   mutate(word = factor(word, unique(word))) %>%
   ungroup() %>%
   ggplot(aes(word, retweets, fill = person)) +
-  geom_bar(stat = "identity", alpha = 0.8, show.legend = FALSE) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
   facet_wrap(~ person, scales = "free", ncol = 2) +
   coord_flip() +
   labs(x = NULL, 
@@ -339,7 +342,7 @@ word_by_favs <- tidy_tweets %>%
   ungroup()
 ```
 
-We have built the data frames we need. Now let's make our visualization.
+We have built the data frames we need. Now let's make our visualization in Figure \@ref(fig:plotfavs).
 
 ```{r plotfavs, dependson = "word_by_favs", fig.width=10, fig.height=5, fig.cap="Words with highest median favorites"}
 word_by_favs %>%
@@ -350,11 +353,11 @@ word_by_favs %>%
   mutate(word = factor(word, unique(word))) %>%
   ungroup() %>%
   ggplot(aes(word, favorites, fill = person)) +
-  geom_bar(stat = "identity", alpha = 0.8, show.legend = FALSE) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
   facet_wrap(~ person, scales = "free", ncol = 2) +
   coord_flip() +
   labs(x = NULL, 
        y = "Median # of favorites for tweets containing each word")
 ```
 
-We see some minor differences between Figures \@ref(fig:plotrts) and \@ref(fig:plotfavs), especially near the bottom of the top 10 list, but these are largely the same words as for retweets. In general, the same words that lead to retweets lead to favorites. A prominent word for Julia in both plots is the hashtag for the NASA Datanauts program that she has participated in; read on to [Chapter 9](#nasa) to learn more about NASA data and what we can learn from text analysis of NASA datasets.
+We see some minor differences between Figures \@ref(fig:plotrts) and \@ref(fig:plotfavs), especially near the bottom of the top 10 list, but these are largely the same words as for retweets. In general, the same words that lead to retweets lead to favorites. A prominent word for Julia in both plots is the hashtag for the NASA Datanauts program that she has participated in; read on to Chapter \@ref(nasa) to learn more about NASA data and what we can learn from text analysis of NASA datasets.

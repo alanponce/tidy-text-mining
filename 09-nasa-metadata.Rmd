@@ -148,7 +148,7 @@ nasa_keyword <- nasa_keyword %>%
 
 ## Word co-ocurrences and correlations
 
-As a next step, let's examine which words commonly occur together in the titles, descriptions, and keywords of NASA datasets, as described in [Chapter 5](#ngrams). We can then examine word networks for these fields; this may help us see, for example, which datasets are related to each other. 
+As a next step, let's examine which words commonly occur together in the titles, descriptions, and keywords of NASA datasets, as described in Chapter \@ref(ngrams). We can then examine word networks for these fields; this may help us see, for example, which datasets are related to each other. 
 
 ### Networks of Description and Title Words
 
@@ -209,11 +209,11 @@ desc_words %>%
 
 ```
 
-Figure \@ref(fig:plotdesc) shows such *strong* connections between the top dozen or so words (words like "data", "global", "resolution", and "instrument") that we do not see clear clustering structure in the network. We may want to use tf-idf (as described in detail in [Chapter 4](#tfidf)) as a metric to find characteristic words for each description field, instead of looking at counts of words. 
+Figure \@ref(fig:plotdesc) shows such *strong* connections between the top dozen or so words (words like "data", "global", "resolution", and "instrument") that we do not see clear clustering structure in the network. We may want to use tf-idf (as described in detail in Chapter \@ref(tfidf)) as a metric to find characteristic words for each description field, instead of looking at counts of words. 
 
 ### Networks of Keywords
 
-Next, let's make a network of the keywords to see which keywords commonly occur together in the same datasets.
+Next, let's make a network of the keywords in Figure \@ref(fig:plotcounts) to see which keywords commonly occur together in the same datasets.
 
 ```{r plotcounts, dependson = "toupper", fig.height=7, fig.width=9, fig.cap="Co-occurrence network in NASA dataset keywords"}
 keyword_counts <- nasa_keyword %>% 
@@ -232,7 +232,7 @@ keyword_counts %>%
   theme_void()
 ```
 
-We definitely see clustering here, and strong connections between keywords like **OCEANS**, **OCEAN OPTICS**, and **OCEAN COLOR**, or **PROJECT** and **COMPLETED**. These are the most commonly co-occurring words, but also just the most common keywords in general. To examine the relationships among keywords in a different way, we can find the correlation among the keywords as described in [Chapter 5](#ngrams). This looks for those keywords that are more likely to occur together than with other keywords in a description field.
+We definitely see clustering here, and strong connections between keywords like **OCEANS**, **OCEAN OPTICS**, and **OCEAN COLOR**, or **PROJECT** and **COMPLETED**. These are the most commonly co-occurring words, but also just the most common keywords in general. To examine the relationships among keywords in a different way, we can find the correlation among the keywords as described in Chapter \@ref(ngrams). This looks for those keywords that are more likely to occur together than with other keywords in a description field.
 
 ```{r keyword_cors, dependson = "toupper"}
 keyword_cors <- nasa_keyword %>% 
@@ -259,11 +259,11 @@ keyword_cors %>%
   theme_void()
 ```
 
-This network appears much different than the co-occurence network. The difference is that the co-occurrence network asks a question about which keyword pairs occur most often, and the correlation network asks a question about which keywordsoccur more often together than with other keywords. Notice here the high number of small clusters of keywords; the network structure can be extracted (for further analysis) from the `graph_from_data_frame()` function above.
+This network in Figure \@ref(fig:plotcors) appears much different than the co-occurence network. The difference is that the co-occurrence network asks a question about which keyword pairs occur most often, and the correlation network asks a question about which keywordsoccur more often together than with other keywords. Notice here the high number of small clusters of keywords; the network structure can be extracted (for further analysis) from the `graph_from_data_frame()` function above.
 
 ## Calculating tf-idf for the description fields
 
-The network graph in Figure \@ref(fig:plotdesc) showed us that the description fields are dominated by a few common words like "data", "global", and "resolution"; this would be an excellent opportunity to use tf-idf as a statistic to find characteristic words for individual description fields. As discussed in [Chapter 4](#tf-idf), we can use tf-idf, the term frequency times inverse document frequency, to identify words that are especially important to a document within a collection of documents. Let's apply that approach to the description fields of these NASA datasets. 
+The network graph in Figure \@ref(fig:plotdesc) showed us that the description fields are dominated by a few common words like "data", "global", and "resolution"; this would be an excellent opportunity to use tf-idf as a statistic to find characteristic words for individual description fields. As discussed in Chapter \@ref(tfidf), we can use tf-idf, the term frequency times inverse document frequency, to identify words that are especially important to a document within a collection of documents. Let's apply that approach to the description fields of these NASA datasets. 
 
 ### What is tf-idf for the description field words?
 
@@ -308,7 +308,7 @@ desc_tf_idf %>%
   ungroup() %>%
   mutate(word = factor(word, levels = rev(unique(word)))) %>%
   ggplot(aes(word, tf_idf, fill = keyword)) +
-  geom_bar(stat = "identity", alpha = 0.8, show.legend = FALSE) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
   facet_wrap(~keyword, ncol = 3, scales = "free") +
   coord_flip() +
   labs(title = "Highest tf-idf words in NASA metadata description fields",
@@ -320,7 +320,7 @@ Using tf-idf has allowed us to identify important description words for each of 
 
 ## Topic modeling
 
-Using tf-idf as a statistic has already given us insight into the content of NASA description fields, but let's try an additional approach to the question of what the NASA descriptions fields are about. We can use topic modeling as described in [Chapter 7](#topicmodeling) to model each document (description field) as a mixture of topics and each topic as a mixture of words. As in earlier chapters, we will use [latent Dirichlet allocation (LDA)](https://en.wikipedia.org/wiki/Latent_Dirichlet_allocation) for our topic modeling; there are other possible approaches for topic modeling.
+Using tf-idf as a statistic has already given us insight into the content of NASA description fields, but let's try an additional approach to the question of what the NASA descriptions fields are about. We can use topic modeling as described in Chapter \@ref(topicmodeling) to model each document (description field) as a mixture of topics and each topic as a mixture of words. As in earlier chapters, we will use [latent Dirichlet allocation (LDA)](https://en.wikipedia.org/wiki/Latent_Dirichlet_allocation) for our topic modeling; there are other possible approaches for topic modeling.
 
 ### Casting to a document-term matrix
 
@@ -346,7 +346,7 @@ word_counts <- nasa_desc %>%
 word_counts
 ```
 
-This is the information we need, the number of times each word is used in each document, to make a `DocumentTermMatrix`. We can `cast()` from our tidy text format to this non-tidy format as described in detail in [Chapter 6](#dtm).
+This is the information we need, the number of times each word is used in each document, to make a `DocumentTermMatrix`. We can `cast()` from our tidy text format to this non-tidy format as described in detail in Chapter \@ref(dtm).
 
 ```{r desc_dtm, dependson = "word_counts"}
 desc_dtm <- word_counts %>%
@@ -410,7 +410,7 @@ top_terms %>%
   ungroup() %>%
   mutate(term = factor(paste(term, topic, sep = "__"), levels = rev(paste(term, topic, sep = "__")))) %>%
   ggplot(aes(term, beta, fill = as.factor(topic))) +
-  geom_bar(stat = "identity", show.legend = FALSE, alpha = 0.8) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
   coord_flip() +
   scale_x_discrete(labels = function(x) gsub("__.+$", "", x)) +
   labs(title = "Top 10 terms in each LDA topic",
@@ -428,11 +428,11 @@ lda_gamma <- tidy(desc_lda, matrix = "gamma")
 lda_gamma
 ```
 
-Notice that some of the probabilites visible at the top of the data frame are low and some are higher. Our model has assigned a probability to each description belonging to each of the topics we constructed from the sets of words. How are the probabilities distributed? Let's visualize them.
+Notice that some of the probabilites visible at the top of the data frame are low and some are higher. Our model has assigned a probability to each description belonging to each of the topics we constructed from the sets of words. How are the probabilities distributed? Let's visualize them (Figure \@ref(fig:plotgamma)).
 
 ```{r plotgamma, dependson = "lda_gamma", fig.width=12, fig.height=16, fig.cap="Probability distribution in topic modeling of NASA metadata description field texts"}
 ggplot(lda_gamma, aes(gamma, fill = as.factor(topic))) +
-  geom_histogram(show.legend = FALSE, alpha = 0.8) +
+  geom_histogram(show.legend = FALSE) +
   facet_wrap(~ topic, ncol = 4) +
   scale_y_log10() +
   labs(title = "Distribution of probability for each topic",
@@ -475,7 +475,7 @@ top_keywords %>%
   mutate(keyword = factor(paste(keyword, topic, sep = "__"), 
                           levels = rev(paste(keyword, topic, sep = "__")))) %>%
   ggplot(aes(keyword, n, fill = as.factor(topic))) +
-  geom_bar(stat = "identity", show.legend = FALSE, alpha = 0.8) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
   labs(title = "Top keywords for each LDA topic",
        x = NULL, y = "Number of documents") +
   coord_flip() +
