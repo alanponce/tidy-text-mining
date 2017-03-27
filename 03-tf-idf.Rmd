@@ -10,7 +10,13 @@ theme_set(theme_light())
 
 A central question in text mining and natural language processing is how to quantify what a document is about. Can we do this by looking at the words that make up the document? One measure of how important a word may be is its *term frequency* (tf), how frequently a word occurs in a document, as we examined in Chapter \@ref(tidytext). There are words in a document, however, that occur many times but may not be important; in English, these are probably words like "the", "is", "of", and so forth. We might take the approach of adding words like these to a list of stop words and removing them before analysis, but it is possible that some of these words might be more important in some documents than others. A list of stop words is not a very sophisticated approach to adjusting term frequency for commonly used words.
 
-Another approach is to look at a term's *inverse document frequency* (idf), which decreases the weight for commonly used words and increases the weight for words that are not used very much in a collection of documents. This can be combined with term frequency to calculate a term's *tf-idf* (the two quantities multiplied together), the frequency of a term adjusted for how rarely it is used. It is intended to measure how important a word is to a document in a collection (or corpus) of documents. It is a rule-of-thumb or heuristic quantity; while it has proved useful in text mining, search engines, etc., its theoretical foundations are considered less than firm by information theory experts. The inverse document frequency for any given term is defined as
+Another approach is to look at a term's *inverse document frequency* (idf), which decreases the weight for commonly used words and increases the weight for words that are not used very much in a collection of documents. This can be combined with term frequency to calculate a term's *tf-idf* (the two quantities multiplied together), the frequency of a term adjusted for how rarely it is used. 
+
+```{block, type = "rmdnote"}
+The statistic **tf-idf** is intended to measure how important a word is to a document in a collection (or corpus) of documents, for example, to one novel in a collection of novels or to one website in a collection of websites. 
+```
+
+It is a rule-of-thumb or heuristic quantity; while it has proved useful in text mining, search engines, etc., its theoretical foundations are considered less than firm by information theory experts. The inverse document frequency for any given term is defined as
 
 $$idf(\text{term}) = \ln{\left(\frac{n_{\text{documents}}}{n_{\text{documents containing term}}}\right)}$$
 
@@ -54,7 +60,13 @@ There are very long tails to the right for these novels (those extremely common 
 
 ## Zipf's law
 
-Distributions like those shown in Figure \@ref(fig:plottf) are typical in language. In fact, those types of long-tailed distributions are so common in any given corpus of natural language (like a book, or a lot of text from a website, or spoken words) that the relationship between the frequency that a word is used and its rank has been the subject of study; a classic version of this relationship is called Zipf's law, after George Zipf, a 20th century American linguist. Zipf's law states that the frequency of a word is inversely proportional to its rank. Since we have the data frame we used to plot term frequency, we can examine Zipf's law for Jane Austen's novels with just a few lines of dplyr functions.
+Distributions like those shown in Figure \@ref(fig:plottf) are typical in language. In fact, those types of long-tailed distributions are so common in any given corpus of natural language (like a book, or a lot of text from a website, or spoken words) that the relationship between the frequency that a word is used and its rank has been the subject of study; a classic version of this relationship is called Zipf's law, after George Zipf, a 20th century American linguist. 
+
+```{block, type = "rmdnote"}
+Zipf's law states that the frequency that a word appears is inversely proportional to its rank. 
+```
+
+Since we have the data frame we used to plot term frequency, we can examine Zipf's law for Jane Austen's novels with just a few lines of dplyr functions.
 
 ```{r freq_by_rank, dependson = book_words}
 freq_by_rank <- book_words %>% 
@@ -105,6 +117,8 @@ We have found a result close to the classic version of Zipf's law for the corpus
 
 The idea of tf-idf is to find the important words for the content of each document by decreasing the weight for commonly used words and increasing the weight for words that are not used very much in a collection or corpus of documents, in this case, the group of Jane Austen's novels as a whole. Calculating tf-idf attempts to find the words that are important (i.e., common) in a text, but not *too* common. Let's do that now.
 
+The `bind_tf_idf` function in the tidytext package takes a tidy text dataset as input with one row per token (term), per document. One column (`word` here) contains the terms/tokens, one column contains the documents (`book` in this case), and the last necessary column contains the counts, how many times each document contains each term (`n` in this example). We calculated a `total` for each book for our explorations in previous sections, but it is not necessary for the `bind_tf_idf` function; the table only needs to contain all the words in each document.
+
 ```{r tf_idf, dependson = "book_words"}
 book_words <- book_words %>%
   bind_tf_idf(word, book, n)
@@ -121,7 +135,13 @@ book_words %>%
   arrange(desc(tf_idf))
 ```
 
-Here we see all proper nouns, names that are in fact important in these novels. None of them occur in all of novels, and they are important, characteristic words for each text within the corpus of Jane Austen's novels. Some of the values for idf are the same for different terms because there are 6 documents in this corpus and we are seeing the numerical value for $\ln(6/1)$, $\ln(6/2)$, etc. Let's look at a visualization for these high tf-idf words in Figure \@ref(fig:plotausten).
+Here we see all proper nouns, names that are in fact important in these novels. None of them occur in all of novels, and they are important, characteristic words for each text within the corpus of Jane Austen's novels. 
+
+```{block, type = "rmdnote"}
+Some of the values for idf are the same for different terms because there are 6 documents in this corpus and we are seeing the numerical value for $\ln(6/1)$, $\ln(6/2)$, etc. 
+```
+
+Let's look at a visualization for these high tf-idf words in Figure \@ref(fig:plotausten).
 
 ```{r plotausten, dependson = "desc_idf", fig.height=6, fig.width=9, fig.cap="Highest tf-idf words in Jane Austen's Novels"}
 plot_austen <- book_words %>%
@@ -129,7 +149,7 @@ plot_austen <- book_words %>%
   mutate(word = factor(word, levels = rev(unique(word))))
 
 ggplot(plot_austen[1:20,], aes(word, tf_idf, fill = book)) +
-  geom_bar(stat = "identity") +
+  geom_col() +
   labs(x = NULL, y = "tf-idf") +
   coord_flip()
 ```
@@ -143,13 +163,13 @@ plot_austen <- plot_austen %>%
   ungroup
 
 ggplot(plot_austen, aes(word, tf_idf, fill = book)) +
-  geom_bar(stat = "identity", show.legend = FALSE) +
+  geom_col(show.legend = FALSE) +
   labs(x = NULL, y = "tf-idf") +
   facet_wrap(~book, ncol = 2, scales = "free") +
   coord_flip()
 ```
 
-Still all proper nouns in Figure \@ref(fig:plotseparate)! These words are, as measured by tf-idf, the most important to each novel and most readers would likely agree.
+Still all proper nouns in Figure \@ref(fig:plotseparate)! These words are, as measured by tf-idf, the most important to each novel and most readers would likely agree. What measuring tf-idf has done here is show us that Jane Austen used similar language across her six novels, and what distinguishes one novel from the rest within the collection of her works are the proper nouns, the names of people and places. This is the point of tf-idf; it identifies words that are important to one document within a collection of documents.
 
 ## A corpus of physics texts
 
@@ -193,7 +213,7 @@ plot_physics <- physics_words %>%
                                             "Einstein, Albert")))
 
 ggplot(plot_physics[1:20,], aes(word, tf_idf, fill = author)) +
-  geom_bar(stat = "identity") +
+  geom_col() +
   labs(x = NULL, y = "tf-idf") +
   coord_flip()
 ```
@@ -207,22 +227,28 @@ plot_physics <- plot_physics %>%
   mutate(word = reorder(word, tf_idf))
 
 ggplot(plot_physics, aes(word, tf_idf, fill = author)) +
-  geom_bar(stat = "identity", show.legend = FALSE) +
+  geom_col(show.legend = FALSE) +
   labs(x = NULL, y = "tf-idf") +
   facet_wrap(~author, ncol = 2, scales = "free") +
   coord_flip()
 ```
 
-Very interesting indeed. One thing we see here is "gif" in the Einstein text?!
+Very interesting indeed. One thing we see here is "eq" in the Einstein text?!
 
 ```{r dependson = "physics"}
-grep("eq\\.", physics$text, value = TRUE)[1:10]
+library(stringr)
+
+physics %>% 
+  filter(str_detect(text, "eq\\.")) %>% 
+  select(text)
 ```
 
-Some cleaning up of the text is in order. "K1" is the name of a coordinate system for Einstein:
+Some cleaning up of the text may be in order. "K1" is the name of a coordinate system for Einstein:
 
 ```{r dependson = "physics"}
-grep("K1", physics$text, value = TRUE)[1]
+physics %>% 
+  filter(str_detect(text, "K1")) %>% 
+  select(text)
 ```
 
 Maybe it makes sense to keep this one. Also notice that in this line we have "co-ordinate", which explains why there are separate "co" and "ordinate" items in the high tf-idf words for the Einstein text; the `unnest_tokens()` function separates around punctuation.
@@ -230,7 +256,9 @@ Maybe it makes sense to keep this one. Also notice that in this line we have "co
 "AB", "RC", and so forth are names of rays, circles, angles, and so forth for Huygens.
 
 ```{r dependson = "physics"}
-grep("AK", physics$text, value = TRUE)[1]
+physics %>% 
+  filter(str_detect(text, "AK")) %>% 
+  select(text)
 ```
 
 Let's remove some of these less meaningful words to make a better, more meaningful plot. Notice that we make a custom list of stop words and use `anti_join()` to remove them; this is a flexible approach that can be used in many situations. We will need to go back a few steps since we are removing words from the tidy data frame.
@@ -251,10 +279,15 @@ plot_physics <- physics_words %>%
                                             "Einstein, Albert")))
 
 ggplot(plot_physics, aes(word, tf_idf, fill = author)) +
-  geom_bar(stat = "identity", show.legend = FALSE) +
+  geom_col(show.legend = FALSE) +
   labs(x = NULL, y = "tf-idf") +
   facet_wrap(~author, ncol = 2, scales = "free") +
   coord_flip()
 ```
 
 One thing we can conclude from Figure \@ref(fig:mystopwords) is that we don't hear enough about ramparts or things being ethereal in physics today.
+
+## Summary 
+
+Using term frequency and inverse document frequency allows us to find words that are characteristic for one document within a collection of documents, whether that document is a novel or physics text or webpage. Exploring term frequency on its own can give us insight into how language is used in a collection of natural language, and dplyr verbs like `count()` and `rank()` give us tools to reason about term frequency. The tidytext package uses an implementation of tf-idf consistent with tidy data principles that allows us to see how different words are important in documents within a collection or corpus of documents.
+

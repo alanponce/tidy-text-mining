@@ -40,7 +40,11 @@ How were these sentiment lexicons put together and validated? They were construc
 
 There are also some domain-specific sentiment lexicons available, constructed to be used with text from a specific content area. Section \@ref(financial) explores an analysis using a sentiment lexicon specifically for finance.
 
-Dictionary-based methods like the ones we are discussing find the total sentiment of a piece of text by adding up the individual sentiment scores for each word in the text. Not every English word is in the lexicons because many English words are pretty neutral. It is important to keep in mind that these methods do not take into account qualifiers before a word, such as in "no good" or "not true"; a lexicon-based method like this is based on unigrams only. For many kinds of text (like the narrative examples below), there are not sustained sections of sarcasm or negated text, so this is not an important effect. Also, we can use a tidy text approach to begin to understand what kinds of negation words are important in a given text; see Chapter \@ref(usenet) for an extended example of such an analysis.
+```{block, type = "rmdnote"}
+Dictionary-based methods like the ones we are discussing find the total sentiment of a piece of text by adding up the individual sentiment scores for each word in the text.
+```
+
+Not every English word is in the lexicons because many English words are pretty neutral. It is important to keep in mind that these methods do not take into account qualifiers before a word, such as in "no good" or "not true"; a lexicon-based method like this is based on unigrams only. For many kinds of text (like the narrative examples below), there are not sustained sections of sarcasm or negated text, so this is not an important effect. Also, we can use a tidy text approach to begin to understand what kinds of negation words are important in a given text; see Chapter \@ref(usenet) for an extended example of such an analysis.
 
 One last caveat is that the size of the chunk of text that we use to add up unigram sentiment scores can have an effect on an analysis. A text the size of many paragraphs can often have positive and negative sentiment averaged out to about zero, while sentence-sized or paragraph-sized text often works better.
 
@@ -48,7 +52,7 @@ One last caveat is that the size of the chunk of text that we use to add up unig
 
 With data in a tidy format, sentiment analysis can be done as an inner join. This is another of the great successes of viewing text mining as a tidy data analysis task; much as removing stop words is an antijoin operation, performing sentiment analysis is an inner join operation.
 
-Let's look at the words with a joy score from the NRC lexicon. What are the most common joy words in *Emma*? First, we need to take the text of the novels and convert the text to the tidy format using `unnest_tokens()`.
+Let's look at the words with a joy score from the NRC lexicon. What are the most common joy words in *Emma*? First, we need to take the text of the novels and convert the text to the tidy format using `unnest_tokens()`, just as we did in Section \@ref(tidyausten). Let's also set up some other columns to keep track of which line and chapter of the book each word comes from; we use `group_by` and `mutate` to construct those columns.
 
 ```{r tidy_books}
 library(janeaustenr)
@@ -64,7 +68,9 @@ tidy_books <- austen_books() %>%
   unnest_tokens(word, text)
 ```
 
-Now that the text is in a tidy format with one term per row, we are ready to do the sentiment analysis. First, let's use the NRC lexicon and `filter()` for the joy words. Next, let's `filter()` the data frame with the text from the books for the words from *Emma* and then use `inner_join()` to perform the sentiment analysis. What are the most common joy words in *Emma*? Let's use `count()` from dplyr.
+Notice that we chose the name `word` for the output column from `unnest_tokens()`. This is a convenient choice because the sentiment lexicons and stop word datasets have columns named `word`; performing inner joins and anti-joins is thus easier.
+
+Now that the text is in a tidy format with one word per row, we are ready to do the sentiment analysis. First, let's use the NRC lexicon and `filter()` for the joy words. Next, let's `filter()` the data frame with the text from the books for the words from *Emma* and then use `inner_join()` to perform the sentiment analysis. What are the most common joy words in *Emma*? Let's use `count()` from dplyr.
 
 ```{r nrcjoy, dependson = "tidy_books"}
 nrcjoy <- get_sentiments("nrc") %>% 
@@ -78,11 +84,15 @@ tidy_books %>%
 
 We see many positive, happy words about hope, friendship, and love here.
 
-Or instead we could examine how sentiment changes during each novel. We can do this with just a handful of lines that are mostly dplyr functions. First, we find a sentiment score for each word using the Bing lexicon and `inner_join()`. 
+Or instead we could examine how sentiment changes throughout each novel. We can do this with just a handful of lines that are mostly dplyr functions. First, we find a sentiment score for each word using the Bing lexicon and `inner_join()`. 
 
-Next, we count up how many positive and negative words there are in defined sections of each book. We define an `index` here to keep track of where we are in the narrative; this index (using integer division) counts up sections of 100 lines of text. The `%/%` operator does integer division (`x %/% y` is equivalent to `floor(x/y)`) so the index keeps track of which 100-line section of text we are counting up negative and positive sentiment in. Small sections of text may not have enough words in them to get a good estimate of sentiment while really large sections can wash out narrative structure. For these books, using 100 lines works well, but this can vary depending on individual texts, how long the lines were to start with, etc. 
+Next, we count up how many positive and negative words there are in defined sections of each book. We define an `index` here to keep track of where we are in the narrative; this index (using integer division) counts up sections of 100 lines of text.
 
-We then use `spread()` so that we have negative and positive sentiment in separate columns, and lastly calculate a net sentiment (positive - negative).
+```{block, type = "rmdtip"}
+The `%/%` operator does integer division (`x %/% y` is equivalent to `floor(x/y)`) so the index keeps track of which 100-line section of text we are counting up negative and positive sentiment in. 
+```
+
+Small sections of text may not have enough words in them to get a good estimate of sentiment while really large sections can wash out narrative structure. For these books, using 100 lines works well, but this can vary depending on individual texts, how long the lines were to start with, etc. We then use `spread()` so that we have negative and positive sentiment in separate columns, and lastly calculate a net sentiment (positive - negative).
 
 ```{r janeaustensentiment, dependson = "tidy_books"}
 library(tidyr)
@@ -100,7 +110,7 @@ Now we can plot these sentiment scores across the plot trajectory of each novel.
 library(ggplot2)
 
 ggplot(janeaustensentiment, aes(index, sentiment, fill = book)) +
-  geom_bar(stat = "identity", show.legend = FALSE) +
+  geom_col(show.legend = FALSE) +
   facet_wrap(~book, ncol = 2, scales = "free_x")
 ```
 
@@ -117,7 +127,11 @@ pride_prejudice <- tidy_books %>%
 pride_prejudice
 ```
 
-Now, we can use `inner_join()` to calculate the sentiment in different ways. Remember from above that the AFINN lexicon measures sentiment with a numeric score between -5 and 5, while the other two lexicons categorize words in a binary fashion, either positive or negative. To find a sentiment score in chunks of text throughout the novel, we will need to use a different pattern for the AFINN lexicon than for the other two. 
+Now, we can use `inner_join()` to calculate the sentiment in different ways. 
+
+```{block, type = "rmdnote"}
+Remember from above that the AFINN lexicon measures sentiment with a numeric score between -5 and 5, while the other two lexicons categorize words in a binary fashion, either positive or negative. To find a sentiment score in chunks of text throughout the novel, we will need to use a different pattern for the AFINN lexicon than for the other two. 
+```
 
 Let's again use integer division (`%/%`) to define larger sections of text that span multiple lines, and we can use the same pattern with `count()`, `spread()`, and `mutate()` to find the net sentiment in each of these sections of text.
 
@@ -149,7 +163,7 @@ We now have an estimate of the net sentiment (positive - negative) in each chunk
 bind_rows(afinn, 
           bing_and_nrc) %>%
   ggplot(aes(index, sentiment, fill = method)) +
-  geom_bar(stat = "identity", show.legend = FALSE) +
+  geom_col(show.legend = FALSE) +
   facet_wrap(~method, ncol = 1, scales = "free_y")
 ```
 
@@ -172,7 +186,7 @@ Both lexicons have more negative than positive words, but the ratio of negative 
 
 ## Most common positive and negative words {#most-positive-negative}
 
-One advantage of having the data frame with both sentiment and word is that we can analyze word counts that contribute to each sentiment.
+One advantage of having the data frame with both sentiment and word is that we can analyze word counts that contribute to each sentiment. By implementing `count()` here with arguments of both `word` and `sentiment`, we find out how much each word contributed to each sentiment.
 
 ```{r wordcounts, dependson = "tidy_books"}
 bing_word_counts <- tidy_books %>%
@@ -191,14 +205,23 @@ bing_word_counts %>%
   top_n(10) %>%
   mutate(word = reorder(word, n)) %>%
   ggplot(aes(word, n, fill = sentiment)) +
-  geom_bar(stat = "identity", show.legend = FALSE) +
+  geom_col(show.legend = FALSE) +
   facet_wrap(~sentiment, scales = "free_y") +
   labs(y = "Contribution to sentiment",
        x = NULL) +
   coord_flip()
 ```
 
-Figure \@ref(fig:pipetoplot) lets us spot an anomaly in the sentiment analysis; the word "miss" is coded as negative but it is used as a title for young, unmarried women in Jane Austen's works. If it were appropriate for our purposes, we could easily add "miss" to a custom stop-words list using `bind_rows()`.
+Figure \@ref(fig:pipetoplot) lets us spot an anomaly in the sentiment analysis; the word "miss" is coded as negative but it is used as a title for young, unmarried women in Jane Austen's works. If it were appropriate for our purposes, we could easily add "miss" to a custom stop-words list using `bind_rows()`. We could implement that with a strategy such as this.
+
+```{r}
+custom_stop_words <- bind_rows(data_frame(word = c("miss"), 
+                                          lexicon = c("custom")), 
+                               stop_words)
+
+custom_stop_words
+```
+
 
 ## Wordclouds
 
@@ -236,7 +259,7 @@ Lots of useful work can be done by tokenizing at the word level, but sometimes i
 
 > I am not having a good day.
 
-is a sad sentence, not a happy one, because of negation. The [Stanford CoreNLP](http://stanfordnlp.github.io/CoreNLP/) tools and the [sentimentr R package](https://github.com/trinker/sentimentr) (currently available on Github but not CRAN) are examples of such sentiment analysis algorithms. For these, we may want to tokenize text into sentences.
+is a sad sentence, not a happy one, because of negation. R packages included coreNLP [@R-coreNLP], cleanNLP [@R-cleanNLP], and sentimentr [@R-sentimentr] are examples of such sentiment analysis algorithms. For these, we may want to tokenize text into sentences, and it makes sense to use a new name for the output column in such a case.
 
 ```{r PandP}
 PandP_sentences <- data_frame(text = prideprejudice) %>% 
@@ -265,9 +288,9 @@ austen_chapters %>%
   summarise(chapters = n())
 ```
 
-We have recovered the correct number of chapters in each novel (plus an "extra" row for each novel title). In this data frame, each row corresponds to one chapter.
+We have recovered the correct number of chapters in each novel (plus an "extra" row for each novel title). In the `austen_chapters` data frame, each row corresponds to one chapter.
 
-Near the beginning of this vignette, we used a similar regex to find where all the chapters were in Austen's novels for a tidy data frame organized by one-word-per-row. We can use tidy text analysis to ask questions such as what are the most negative chapters in each of Jane Austen's novels? First, let's get the list of negative words from the Bing lexicon. Second, let's make a data frame of how many words are in each chapter so we can normalize for the length of chapters. Then, let's find the number of negative words in each chapter and divide by the total words in each chapter. Which chapter has the highest proportion of negative words?
+Near the beginning of this chapter, we used a similar regex to find where all the chapters were in Austen's novels for a tidy data frame organized by one-word-per-row. We can use tidy text analysis to ask questions such as what are the most negative chapters in each of Jane Austen's novels? First, let's get the list of negative words from the Bing lexicon. Second, let's make a data frame of how many words are in each chapter so we can normalize for the length of chapters. Then, let's find the number of negative words in each chapter and divide by the total words in each chapter. For each book, which chapter has the highest proportion of negative words?
 
 ```{r chapters, dependson = "tidy_books"}
 bingnegative <- get_sentiments("bing") %>% 
@@ -285,7 +308,12 @@ tidy_books %>%
   mutate(ratio = negativewords/words) %>%
   filter(chapter != 0) %>%
   top_n(1) %>%
-  ungroup
+  ungroup()
 ```
 
 These are the chapters with the most sad words in each book, normalized for number of words in the chapter. What is happening in these chapters? In Chapter 43 of *Sense and Sensibility* Marianne is seriously ill, near death, and in Chapter 34 of *Pride and Prejudice* Mr. Darcy proposes for the first time (so badly!). Chapter 46 of *Mansfield Park* is almost the end, when everyone learns of Henry's scandalous adultery, Chapter 15 of *Emma* is when horrifying Mr. Elton proposes, and in Chapter 21 of *Northanger Abbey* Catherine is deep in her Gothic faux fantasy of murder, etc. Chapter 4 of *Persuasion* is when the reader gets the full flashback of Anne refusing Captain Wentworth and how sad she was and what a terrible mistake she realized it to be.
+
+## Summary
+
+Sentiment analysis provides a way to understand the attitudes and opinions expressed in texts. In this chapter, we explored how to approach sentiment analysis using tidy data principles; when text data is in a tidy data structure, sentiment analysis can be implemented as an inner join. We can use sentiment analysis to understand how a narrative arc changes throughout its course or what words with emotional and opinion content are important for a particular text. We will continue to develop our toolbox for applying sentiment analysis to different kinds of text in our case studies later in this book.
+

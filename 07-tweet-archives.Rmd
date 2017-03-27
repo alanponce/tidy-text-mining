@@ -14,7 +14,7 @@ One type of text that gets plenty of attention is text shared online via Twitter
 
 An individual can download their own Twitter archive by following [directions available on Twitter's website](https://support.twitter.com/articles/20170160). We each downloaded ours and will now open them up. Let's use the lubridate package to convert the string timestamps to date-time objects and initially take a look at our tweeting patterns overall (Figure \@ref(fig:setup)).
 
-```{r setup, fig.width=8, fig.height=6, fig.cap="All tweets from our accounts"}
+```{r setup, fig.width=7, fig.height=6, fig.cap="All tweets from our accounts"}
 library(lubridate)
 library(ggplot2)
 library(dplyr)
@@ -29,7 +29,8 @@ tweets <- bind_rows(tweets_julia %>%
   mutate(timestamp = ymd_hms(timestamp))
 
 ggplot(tweets, aes(x = timestamp, fill = person)) +
-  geom_histogram(alpha = 0.5, position = "identity", bins = 20)
+  geom_histogram(alpha = 0.5, position = "identity", bins = 20, show.legend = FALSE) +
+  facet_wrap(~person, ncol = 1)
 ```
 
 David and Julia tweet at about the same rate currently and joined Twitter about a year apart from each other, but there were about 5 years where David was not active on Twitter and Julia was. In total, Julia has about 4 times as many tweets as David.
@@ -38,17 +39,24 @@ David and Julia tweet at about the same rate currently and joined Twitter about 
 
 Let's use `unnest_tokens()` to make a tidy data frame of all the words in our tweets, and remove the common English stop words. There are certain conventions in how people use text on Twitter, so we will do a bit more work with our text here than, for example, we did with the narrative text from Project Gutenberg. 
 
-First, we will remove tweets from this dataset that are retweets so that we only have tweets that we wrote ourselves. Next, the `mutate()` line removes links and cleans out some characters that we don't want like ampersands and such. In the call to `unnest_tokens()`, we unnest using a regex pattern, instead of just looking for single unigrams (words). This regex pattern is very useful for dealing with Twitter text; it retains hashtags and mentions of usernames with the `@` symbol. Because we have kept these types of symbols in the text, we can't use a simple `anti_join()` to remove stop words. Instead, we can take the approach shown in the `filter()` line that uses `str_detect()` from the stringr library.
+First, we will remove tweets from this dataset that are retweets so that we only have tweets that we wrote ourselves. Next, the `mutate()` line removes links and cleans out some characters that we don't want like ampersands and such. 
+
+```{block, type = "rmdnote"}
+In the call to `unnest_tokens()`, we unnest using a regex pattern, instead of just looking for single unigrams (words). This regex pattern is very useful for dealing with Twitter text; it retains hashtags and mentions of usernames with the `@` symbol. 
+```
+
+Because we have kept these types of symbols in the text, we can't use a simple `anti_join()` to remove stop words. Instead, we can take the approach shown in the `filter()` line that uses `str_detect()` from the stringr package.
 
 ```{r tidytweets, dependson = "setup"}
 library(tidytext)
 library(stringr)
 
-reg <- "([^A-Za-z_\\d#@']|'(?![A-Za-z_\\d#@]))"
+replace_reg <- "https://t.co/[A-Za-z\\d]+|http://[A-Za-z\\d]+|&amp;|&lt;|&gt;|RT|https"
+unnest_reg <- "([^A-Za-z_\\d#@']|'(?![A-Za-z_\\d#@]))"
 tidy_tweets <- tweets %>% 
   filter(!str_detect(text, "^RT")) %>%
-  mutate(text = str_replace_all(text, "https://t.co/[A-Za-z\\d]+|http://[A-Za-z\\d]+|&amp;|&lt;|&gt;|RT|https", "")) %>%
-  unnest_tokens(word, text, token = "regex", pattern = reg) %>%
+  mutate(text = str_replace_all(text, replace_reg, "")) %>%
+  unnest_tokens(word, text, token = "regex", pattern = unnest_reg) %>%
   filter(!word %in% stop_words$word,
          str_detect(word, "[a-z]"))
 ```
@@ -80,7 +88,7 @@ frequency <- frequency %>%
 frequency
 ```
 
-Now this is ready for us to plot. Let's use `geom_jitter()` so that we don't see the discreteness at the low end of frequency as much.
+Now this is ready for us to plot. Let's use `geom_jitter()` so that we don't see the discreteness at the low end of frequency as much, and `check_overlap = TRUE` so the text labels don't all print out on top of each other (only some will print).
 
 ```{r spreadplot, dependson = "spread", fig.height=7, fig.width=7, fig.cap= "Comparing the frequency of words used by Julia and David"}
 library(scales)
@@ -94,7 +102,7 @@ ggplot(frequency, aes(Julia, David)) +
 ```
 
 
-Words near the red line in Figure \@ref(fig:spreadplot) are used with about equal frequencies by David and Julia, while words far away from the line are used much more by one person compared to the other. Words, hashtags, and usernames that appear in this plot are ones that we have both used at least once in tweets.
+Words near the line in Figure \@ref(fig:spreadplot) are used with about equal frequencies by David and Julia, while words far away from the line are used much more by one person compared to the other. Words, hashtags, and usernames that appear in this plot are ones that we have both used at least once in tweets.
 
 This may not even need to be pointed out, but David and Julia have used their Twitter accounts rather differently over the course of the past several years. David has used his Twitter account almost exclusively for professional purposes since he became more active, while Julia used it for entirely personal purposes until late 2015 and still uses it more personally than David. We see these differences immediately in this plot exploring word frequencies, and they will continue to be obvious in the rest of this chapter. 
 
@@ -145,7 +153,7 @@ word_ratios %>%
   ungroup() %>%
   mutate(word = reorder(word, logratio)) %>%
   ggplot(aes(word, logratio, fill = logratio < 0)) +
-  geom_bar(stat = "identity") +
+  geom_col() +
   coord_flip() +
   ylab("log odds ratio (David/Julia)") +
   scale_fill_discrete(name = "", labels = c("David", "Julia"))
@@ -187,7 +195,11 @@ nested_data <- words_by_time %>%
 nested_data
 ```
 
-This data frame has one row for each person-word combination; the `data` column is a list column that contains data frames, one for each combination of person and word. Let's use `map()` from the purrr library to apply our modeling procedure to each of those little data frames inside our big data frame. This is count data so let’s use `glm()` with `family = "binomial"` for modeling. We can think about this modeling procedure answering a question like, "Was a given word mentioned in a given time bin? Yes or no? How does the count of word mentions depend on time?"
+This data frame has one row for each person-word combination; the `data` column is a list column that contains data frames, one for each combination of person and word. Let's use `map()` from the purrr library to apply our modeling procedure to each of those little data frames inside our big data frame. This is count data so let’s use `glm()` with `family = "binomial"` for modeling. 
+
+```{block, type = "rmdtip"}
+We can think about this modeling procedure answering a question like, "Was a given word mentioned in a given time bin? Yes or no? How does the count of word mentions depend on time?"
+```
 
 ```{r nested_models, dependson = "nest"}
 library(purrr)
@@ -232,7 +244,7 @@ words_by_time %>%
 
 We see in Figure \@ref(fig:topdave) that David tweeted a lot about the UseR conference while he was there and then quickly stopped. He has tweeted more about Stack Overflow toward the end of the year and less about ggplot2 as the year has progressed.
 
-<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr">Me: I&#39;m so sick of data science wars. <a href="https://twitter.com/hashtag/rstats?src=hash">#rstats</a> vs Python, frequentist vs Bayesian...<br><br>Them: base vs ggplot2...<br><br>Me: WHY WHICH SIDE ARE YOU ON</p>&mdash; David Robinson (@drob) <a href="https://twitter.com/drob/status/712639593703542785">March 23, 2016</a></blockquote>
+<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr">Me: I&#39;m so sick of data science wars. <a href="https://twitter.com/hashtag/rstats?src=hash">#rstats</a> vs Python, frequentist vs Bayesian...<br><br>Them: base vs ggplot2...<br><br>Me: WHY WHICH SIDE ARE YOU ON</p>&mdash; David Robinson (\@drob) <a href="https://twitter.com/drob/status/712639593703542785">March 23, 2016</a></blockquote>
 <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 
 Now let's plot words that have changed frequency in Julia's tweets in Figure \@ref(fig:topjulia).
@@ -267,14 +279,14 @@ Now that we have this second, smaller set of only recent tweets, let's use `unne
 ```{r tidy_tweets2, dependson = "setup2"}
 tidy_tweets <- tweets %>% 
   filter(!str_detect(text, "^(RT|@)")) %>%
-  mutate(text = str_replace_all(text, "https://t.co/[A-Za-z\\d]+|http://[A-Za-z\\d]+|&amp;|&lt;|&gt;|RT|https", "")) %>%
-  unnest_tokens(word, text, token = "regex", pattern = reg) %>%
+  mutate(text = str_replace_all(text, replace_reg, "")) %>%
+  unnest_tokens(word, text, token = "regex", pattern = unnest_reg) %>%
   anti_join(stop_words)
 
 tidy_tweets
 ```
 
-To start with, let's look at retweets. Let's find the total number of retweets for each person.
+To start with, let’s look at the number of times each of our tweets was retweeted. Let's find the total number of retweets for each person.
 
 ```{r rt_totals, dependson = "tidy_tweets2"}
 totals <- tidy_tweets %>% 
@@ -286,7 +298,7 @@ totals <- tidy_tweets %>%
 totals
 ```
 
-Now let's find the median number of retweets for each word and person. We probably want to count each tweet/word combination only once, so we will use `group_by()` and `summarise()` twice, one right after the other. In the second `summarise()` statement, we can also count the number of times each word was used ever and keep that in `uses`. Next, we can join this to the data frame of retweet totals. Let's `filter()` to only keep words mentioned at least 5 times.
+Now let's find the median number of retweets for each word and person. We probably want to count each tweet/word combination only once, so we will use `group_by()` and `summarise()` twice, one right after the other. The first `summarise()` statement counts how many times each word was retweeted, for each tweet and person. In the second `summarise()` statement, we can find the median retweets for each person and word, also count the number of times each word was used ever by each person and keep that in `uses`. Next, we can join this to the data frame of retweet totals. Let's `filter()` to only keep words mentioned at least 5 times.
 
 ```{r word_by_rts, dependson = c("rt_totals", "tidy_tweets2")}
 word_by_rts <- tidy_tweets %>% 
@@ -314,7 +326,7 @@ word_by_rts %>%
   mutate(word = factor(word, unique(word))) %>%
   ungroup() %>%
   ggplot(aes(word, retweets, fill = person)) +
-  geom_bar(stat = "identity", show.legend = FALSE) +
+  geom_col(show.legend = FALSE) +
   facet_wrap(~ person, scales = "free", ncol = 2) +
   coord_flip() +
   labs(x = NULL, 
@@ -353,7 +365,7 @@ word_by_favs %>%
   mutate(word = factor(word, unique(word))) %>%
   ungroup() %>%
   ggplot(aes(word, favorites, fill = person)) +
-  geom_bar(stat = "identity", show.legend = FALSE) +
+  geom_col(show.legend = FALSE) +
   facet_wrap(~ person, scales = "free", ncol = 2) +
   coord_flip() +
   labs(x = NULL, 
@@ -361,3 +373,7 @@ word_by_favs %>%
 ```
 
 We see some minor differences between Figures \@ref(fig:plotrts) and \@ref(fig:plotfavs), especially near the bottom of the top 10 list, but these are largely the same words as for retweets. In general, the same words that lead to retweets lead to favorites. A prominent word for Julia in both plots is the hashtag for the NASA Datanauts program that she has participated in; read on to Chapter \@ref(nasa) to learn more about NASA data and what we can learn from text analysis of NASA datasets.
+
+## Summary
+
+This chapter was our first case study, a beginning-to-end analysis that demonstrates how to bring together the concepts and code we have been exploring in a cohesive way to understand a text data set. Comparing word frequencies allows us to see which words we tweeted more and less frequently, and the log odds ratio shows us which words are more likely to be tweeted from each of our accounts. We can use `nest()` and `map()` with the `glm()` function to find which words we have tweeted at higher and lower rates as time has passed. Finally, we can find which words in our tweets led to higher numbers of retweets and favorites. All of these are examples of approaches to measure how we use words in similar and different ways and how the characteristics of our tweets are changing or compare with each other. These are flexible approaches to text mining that can be applied to other types of text as well.
