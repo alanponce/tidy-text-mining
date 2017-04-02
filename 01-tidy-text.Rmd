@@ -80,7 +80,12 @@ After using `unnest_tokens`, we've split each row so that there is one token (wo
 * Punctuation has been stripped.
 * By default, `unnest_tokens()` converts the tokens to lowercase, which makes them easier to compare or combine with other datasets. (Use the `to_lower = FALSE` argument to turn off this behavior).
 
-Having the text data in this format lets us manipulate, process, and visualize the text using the standard set of tidy tools, namely dplyr, tidyr, ggplot2, and broom.
+Having the text data in this format lets us manipulate, process, and visualize the text using the standard set of tidy tools, namely dplyr, tidyr, and ggplot2, as shown in Figure \@ref(fig:tidyflow-ch1).
+
+```{r tidyflow-ch1, echo = FALSE, out.width = '100%', fig.cap = "A flowchart of a typical text analysis using tidy data principles. This chapter shows how to summarize and visualize text using these tools."}
+knitr::include_graphics("images/tidyflow-ch-1.png")
+```
+
 
 ## Tidying the works of Jane Austen {#tidyausten}
 
@@ -219,6 +224,7 @@ frequency <- bind_rows(mutate(tidy_bronte, author = "Brontë Sisters"),
                        mutate(tidy_books, author = "Jane Austen")) %>% 
   mutate(word = str_extract(word, "[a-z']+")) %>%
   count(author, word) %>%
+  group_by(author) %>%
   mutate(proportion = n / sum(n)) %>% 
   select(-n) %>% 
   spread(author, proportion) %>% 
@@ -262,4 +268,4 @@ Just as we saw in the plots, the word frequencies are more correlated between th
 
 ## Summary
 
-In this chapter, we explored what we mean by tidy data when it comes to text, and how tidy data principles can be applied to natural language processing. When text is organized in a format with one token per row, tasks like removing stop words or calculating word frequencies are natural applications of familiar operations within the tidy tool ecosystem. The one-token-per-row framework can be extended from single words to n-grams and other meaningful units of text, as well as to many more analysis priorities.
+In this chapter, we explored what we mean by tidy data when it comes to text, and how tidy data principles can be applied to natural language processing. When text is organized in a format with one token per row, tasks like removing stop words or calculating word frequencies are natural applications of familiar operations within the tidy tool ecosystem. The one-token-per-row framework can be extended from single words to n-grams and other meaningful units of text, as well as to many other analysis priorities that we will consider in this book.

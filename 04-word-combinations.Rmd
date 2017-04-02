@@ -108,8 +108,11 @@ bigram_tf_idf
 ```
 
 ```{r bigramtfidf, dependson = "bigram_tf_idf", echo = FALSE, fig.width=9, fig.height=9, fig.cap = "The 12 bigrams with the highest tf-idf from each Jane Austen novel"}
+library(ggplot2)
+
 bigram_tf_idf %>%
   arrange(desc(tf_idf)) %>%
+  group_by(book) %>%
   top_n(12, tf_idf) %>%
   ungroup() %>%
   mutate(bigram = reorder(bigram, tf_idf)) %>%
@@ -164,8 +167,6 @@ For example, the most common sentiment-associated word to follow "not" was "like
 It's worth asking which words contributed the most in the "wrong" direction. To compute that, we can multiply their score by the number of times they appear (so that a word with a score of +3 occurring 10 times has as much impact as a word with a sentiment score of +1 occurring 30 times). We visualize the result with a bar plot (Figure \@ref(fig:notwordsplot)).
 
 ```{r notwordsplot, dependson = "not_words", fig.width=8, fig.height=6, fig.cap = "The 20 words followed by 'not' that had the greatest contribution to sentiment scores, in either a positive or negative direction"}
-library(ggplot2)
-
 not_words %>%
   mutate(contribution = n * score) %>%
   arrange(desc(abs(contribution))) %>%
@@ -192,14 +193,15 @@ negated_words <- bigrams_separated %>%
   ungroup()
 ```
 
-We could then visualize what the most common words to follow each particular negation are (Figure \@ref(fig:negatedwords)). While "not like" and "not help" are still the two most common examples, we can also see pairings such as "no great" and "never loved." We could combine this with the approaches in Chapter \@ref(sentiments) to reverse the AFINN scores of each word that follows a negation. These are just a few examples of how finding consecutive words can give context to text mining methods.
+We could then visualize what the most common words to follow each particular negation are (Figure \@ref(fig:negatedwords)). While "not like" and "not help" are still the two most common examples, we can also see pairings such as "no great" and "never loved." We could combine this with the approaches in Chapter \@ref(sentiment) to reverse the AFINN scores of each word that follows a negation. These are just a few examples of how finding consecutive words can give context to text mining methods.
 
 ```{r negatedwords, dependson = "negated_words", fig.width=9, fig.height=9, echo = FALSE, fig.cap = "The most common positive or negative words to follow negations such as 'never', 'no', 'not', and 'without'"}
 negated_words %>%
-  mutate(contribution = n * score) %>%
-  mutate(word2 = reorder(paste(word2, word1, sep = "__"), contribution)) %>%
+  mutate(contribution = n * score,
+         abscontribution = abs(contribution),
+         word2 = reorder(paste(word2, word1, sep = "__"), contribution)) %>%
   group_by(word1) %>%
-  top_n(12, abs(contribution)) %>%
+  top_n(12, abscontribution) %>%
   ggplot(aes(word2, contribution, fill = n * score > 0)) +
   geom_col(show.legend = FALSE) +
   facet_wrap(~ word1, scales = "free") +
@@ -233,7 +235,7 @@ bigram_graph <- bigram_counts %>%
 bigram_graph
 ```
 
-igraph has plotting functions built in, but they're not what the package is designed to do, so many other packages have developed visualization methods for graph objects. We recommend the [ggraph package](https://github.com/thomasp85/ggraph), because it implements these visualizations in terms of the grammar of graphics, which we are already familiar with from ggplot2.
+igraph has plotting functions built in, but they're not what the package is designed to do, so many other packages have developed visualization methods for graph objects. We recommend the ggraph package [@R-ggraph], because it implements these visualizations in terms of the grammar of graphics, which we are already familiar with from ggplot2.
 
 We can convert an igraph object into a ggraph with the `ggraph` function, after which we add layers to it, much like layers are added in ggplot2. For example, for a basic graph we need to add three layers: nodes, edges, and text.
 
@@ -438,6 +440,7 @@ word_cors %>%
   filter(item1 %in% c("elizabeth", "pounds", "married", "pride")) %>%
   group_by(item1) %>%
   top_n(6) %>%
+  ungroup() %>%
   mutate(item2 = reorder(item2, correlation)) %>%
   ggplot(aes(item2, correlation)) +
   geom_bar(stat = "identity") +
@@ -464,4 +467,4 @@ Note that unlike the bigram analysis, the relationships here are symmetrical, ra
 
 ## Summary
 
-This chapter showed how the tidy text approach is useful not only for analyzing individual words, but also for exploring the relationships and connections between words. Such relationships include n-grams, which examine what words tend to appear after others, as well as co-occurences and correlations for words that appear in proximity to each other. The chapter also demonstrated the ggraph package for visualizing both of these types of relationships as networks. These network visualizations are a flexible tool for exploring relationships, and will play an important role in the case studies in later chapters. 
+This chapter showed how the tidy text approach is useful not only for analyzing individual words, but also for exploring the relationships and connections between words. Such relationships can involve n-grams, which enable us to see what words tend to appear after others, or co-occurences and correlations, for words that appear in proximity to each other. This chapter also demonstrated the ggraph package for visualizing both of these types of relationships as networks. These network visualizations are a flexible tool for exploring relationships, and will play an important role in the case studies in later chapters. 
